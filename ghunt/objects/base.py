@@ -5,6 +5,9 @@ from dateutil.relativedelta import relativedelta
 from datetime import datetime
 import base64
 
+import os
+import platform
+
 from autoslot import Slots
 import httpx
 
@@ -35,9 +38,26 @@ class GHuntCreds(SmartObj):
 
         if not creds_path:
             cwd_path = Path().home()
-            ghunt_folder = cwd_path / ".malfrats/ghunt"
+            
+            
+            env_ghunt_home = os.environ.get("GHUNT_HOME")
+            if env_ghunt_home:
+                ghunt_folder = Path(env_ghunt_home)
+            else:
+                match platform.system():
+                    case "Windows":
+                        ghunt_folder = Path(os.getenv("APPDATA", cwd_path / "AppData/Roaming") ) / "malfrats/ghunt"
+                    case "Darwin":
+                        ghunt_folder = cwd_path / "Library/Application Support/malfrats/ghunt"
+                    case _:
+                        ghunt_folder = Path(os.getenv("XDG_CONFIG_HOME", cwd_path / ".config")) / "malfrats/ghunt"
+
             if not ghunt_folder.is_dir():
-                ghunt_folder.mkdir(parents=True, exist_ok=True)
+                old_ghunt_folder = cwd_path / ".malfrats/ghunt"
+                if old_ghunt_folder.is_dir():
+                    os.rename(old_ghunt_folder, ghunt_folder)
+                else:
+                    ghunt_folder.mkdir(parents=True, exist_ok=True)
             creds_path = ghunt_folder / "creds.m"
         self.creds_path: str = creds_path
 
